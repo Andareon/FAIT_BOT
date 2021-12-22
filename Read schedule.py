@@ -78,7 +78,7 @@ def read_sqlite_table():
                         sqlite_insert_with_param = """INSERT INTO schedule
                                               (group_name, number_lesson, lesson,format, teacher, audience, day_number, week)
                                               VALUES (?, ?,?, ?, ?, ?, ?, ?);"""
-
+                        # данные, которые записываем в таблицу, последнее значение означает неделю: 0 - числитель, 1 - знаменатель
                         data_tuple = (row[0], lesson + 1, lesson_name, format, teacher_FIO, audience, today + 1, 1)
                         cursor.execute(sqlite_insert_with_param, data_tuple)
                         print("Переменные Python успешно вставлены в таблицу teacher")
