@@ -1,4 +1,5 @@
 # -*- coding: utf8 --
+
 import sqlite3
 import telebot
 from telebot import types, TeleBot
@@ -6,13 +7,14 @@ import datetime
 from telebot.types import InlineKeyboardMarkup
 
 import config
-
-conn = sqlite3.connect("data.db")
-cursor = conn.cursor()
-
-bot: TeleBot = telebot.TeleBot(config.TOKEN, threaded=False)
 def lower(string):
     return str(string).lower()
+
+conn = sqlite3.connect("C:/Users/DS/YandexDisk/fait/data.db")
+cursor = conn.cursor()
+conn.create_function("LOWER", 1, lower)
+bot: TeleBot = telebot.TeleBot(config.TOKEN, threaded=False)
+
 
 
 def insert_varible_into_table_group(id_user, group_name):
@@ -53,7 +55,7 @@ lesson_time = {1: '9:00-10:30',
 markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
 markup.add('Студент', 'Преподаватель')
 
-def read_lesson_teacher(daynum,weeknum):
+def read_lesson_teacher(id_user,daynum,weeknum):
     group_name_users = """SELECT lower(FIO) from users where id_user = ?"""
     records = cursor.execute(group_name_users, [id_user]).fetchall()
     sql = 'SELECT * FROM schedule WHERE lower(teacher) = lower(?) AND day_number = ? and week = ? ORDER BY number_lesson'
@@ -81,7 +83,7 @@ def read_lesson_teacher(daynum,weeknum):
         bot.send_message(id_user, 'Ошибка, попробуйте еще раз')
 
 
-def read_lesson(daynum,weeknum):
+def read_lesson(id_user,daynum,weeknum):
     group_name_users = """SELECT group_name from users where id_user = ?"""
     records = cursor.execute(group_name_users, [id_user]).fetchall()
     sql = 'SELECT * FROM schedule WHERE lower(group_name) = lower(?) AND day_number = ? and week = ? ORDER BY number_lesson'
@@ -102,11 +104,102 @@ def schedule(id_user,daynum,weeknum):
         group_name_users = """SELECT group_name from users where id_user = ?"""
         records = cursor.execute(group_name_users, [id_user]).fetchall()
         if records[0][0] != None:
-            read_lesson(daynum, weeknum)
+            read_lesson(id_user,daynum, weeknum)
         else:
-            read_lesson_teacher(daynum, weeknum)
+            read_lesson_teacher(id_user,daynum, weeknum)
     except:
         bot.register_next_step_handler(id_user, start)
+
+def update_news_table():
+    flag = True
+
+    while flag:
+        news_rownum_sql = """SELECT id_news, date_news, time_news, author, text from starostat_news"""
+        rownum_sql = cursor.execute(news_rownum_sql, ).fetchall()
+        print(rownum_sql[0])
+        count = 0
+        for i in range(1,len(rownum_sql)):
+            if rownum_sql[i][1] == rownum_sql[i-1][1] and rownum_sql[i][2][0:5]  == rownum_sql[i-1][2][0:5] and rownum_sql[i-1][3] == rownum_sql[i][3]:
+                update_table_str = """UPDATE starostat_news SET text = ? where id_news = ?"""
+                update_table = cursor.execute(update_table_str, [rownum_sql[i-1][4] + '\n' + rownum_sql[i][4] , rownum_sql[i-1][0]]).fetchall()
+                conn.commit()
+                delete_table_str = """DELETE FROM starostat_news where id_news = ?"""
+                delete_table = cursor.execute(delete_table_str, [rownum_sql[i][0]]).fetchall()
+                conn.commit()
+                print('успешно: ',rownum_sql[i-1][4] + '\n' + rownum_sql[i][4],' ',[rownum_sql[i][0]])
+                break
+            else:
+                count = count +1
+                #print(rownum_sql[i-1][2][0:5],int(rownum_sql[i-1][2][3:5])-1)
+                if count == len((rownum_sql))-1:
+                    flag = False
+
+
+
+
+def news(id_user):
+
+        # news_rownum_sql = """SELECT id_news from starostat_news"""
+        # rownum_sql = cursor.execute(news_rownum_sql,).fetchall()
+        # end_news = int(len(rownum_sql))
+        #
+        # news_news_sql = """SELECT date_news, time_news, author, text, id_news from starostat_news where id_news = ?"""
+        # records = cursor.execute(news_news_sql, [end_news]).fetchall()
+        #
+        # news_rownum_user_news_view = """SELECT news_view from users where id_user = ?"""
+        # news_rownum = cursor.execute(news_rownum_user_news_view, [id_user] ).fetchall()
+        #
+        # for row in news_rownum:
+        #     news_rownum_news = str(row[0])
+        #
+        # news_rownum_count = news_rownum_news.split(',')
+        # test_1 = str(records[0][4]).split(' ')
+        # print(str(test_1[0]) not in news_rownum_count)
+        #
+        # if str(test_1[0]) not in news_rownum_count:
+        #     news_rownum_news = news_rownum_news + ',' + str(records[0][4])
+        #     update_rownum = """UPDATE users SET news_view = ? where id_user = ?"""
+        #     update_rownum_news = cursor.execute(update_rownum, [news_rownum_news, id_user] ).fetchall()
+        #     conn.commit()
+        #     bot.send_message(id_user, f'{records[0][2]}\n {records[0][0]} - {records[0][1]}\n{records[0][3]}' )
+        # else:
+        #     bot.send_message(id_user, f'Вы все просмотрели, новых сообщений нет!' )
+
+        news_rownum_sql = """SELECT id_news from starostat_news"""
+        rownum_sql = cursor.execute(news_rownum_sql, ).fetchall()
+        end_news = int(len(rownum_sql))
+
+        news_news_sql = """SELECT date_news, time_news, author, text, id_news from starostat_news"""
+        records = cursor.execute(news_news_sql, ).fetchall()
+
+        news_rownum_user_news_view = """SELECT news_view from users where id_user = ?"""
+        news_rownum = cursor.execute(news_rownum_user_news_view, [id_user]).fetchall()
+        count = 0
+        print(records[0],records[0][1],records[1][1])
+        for row in news_rownum:
+            news_rownum_news = str(row[0])
+        for i in records:
+            news_rownum_count = news_rownum_news.split(',')
+            test_1 = str(i[4]).split(' ')
+            print(str(test_1[0]) not in news_rownum_count)
+
+            if str(test_1[0]) not in news_rownum_count:
+                news_rownum_news = news_rownum_news + ',' + str(i[4])
+                update_rownum = """UPDATE users SET news_view = ? where id_user = ?"""
+                update_rownum_news = cursor.execute(update_rownum, [news_rownum_news, id_user]).fetchall()
+                conn.commit()
+                bot.send_message(id_user, f'{i[2]}\n {i[0]} - {i[1]}\n{i[3]}')
+                count = count + 1
+        if count == 0:
+            bot.send_message(id_user, f'Вы все просмотрели, новых сообщений нет!')
+
+
+def news_all(id_user):
+    news_rownum_user = """SELECT news_view from users"""
+    news_rownum = cursor.execute(news_rownum_user, ).fetchall()
+    news_news_user = """SELECT date_news, time_news, author, text from starostat_news where id_news <> ?"""
+    news_news = cursor.execute(news_news_user, [news_rownum[0][0]] ).fetchall()
+    print(news_news)
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -118,7 +211,9 @@ def start(message):
     print(records)
     markup_1 = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
     item1 = types.KeyboardButton('Расписание')
-    markup_1.add(item1)
+    item2 = types.KeyboardButton('Непрочитанные новости')
+    item3 = types.KeyboardButton('Все новости')
+    markup_1.add(item1, item2, item3)
     if records:
         msg = bot.reply_to(message,  "Привет, {0.first_name}!\nЯ - <b>Помошник</b>, бот созданный, чтобы упростить просмотр расписания ".format(
                              message.from_user, bot.get_me()), parse_mode='html',reply_markup=markup_1)
@@ -175,6 +270,86 @@ def callback_woker(call):
         weeknum = 0
         daynum = 1
         schedule(id_user,daynum,weeknum)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=call.message.text,
+                              )
+    elif call.data == 'tuesday0':
+        id_user = eval(str(call.from_user))['id']
+        weeknum = 0
+        daynum = 2
+        schedule(id_user,daynum,weeknum)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=call.message.text,
+                              )
+    elif call.data == 'wednesday0':
+        id_user = eval(str(call.from_user))['id']
+        weeknum = 0
+        daynum = 3
+        schedule(id_user,daynum,weeknum)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=call.message.text,
+                              )
+    elif call.data == 'thrusday0':
+        id_user = eval(str(call.from_user))['id']
+        weeknum = 0
+        daynum = 4
+        schedule(id_user,daynum,weeknum)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=call.message.text,
+                              )
+    elif call.data == 'friday0':
+        id_user = eval(str(call.from_user))['id']
+        weeknum = 0
+        daynum = 5
+        schedule(id_user,daynum,weeknum)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=call.message.text,
+                              )
+    elif call.data == 'saturday0':
+        id_user = eval(str(call.from_user))['id']
+        weeknum = 0
+        daynum = 6
+        schedule(id_user,daynum,weeknum)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=call.message.text,
+                              )
+    elif call.data == 'monday1':
+        id_user = eval(str(call.from_user))['id']
+        weeknum = 1
+        daynum = 1
+        schedule(id_user,daynum,weeknum)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=call.message.text,
+                              )
+    elif call.data == 'tuesday1':
+        id_user = eval(str(call.from_user))['id']
+        weeknum = 1
+        daynum = 2
+        schedule(id_user,daynum,weeknum)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=call.message.text,
+                              )
+    elif call.data == 'wednesday1':
+        id_user = eval(str(call.from_user))['id']
+        weeknum = 1
+        daynum = 3
+        schedule(id_user,daynum,weeknum)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=call.message.text,
+                              )
+    elif call.data == 'thrusday1':
+        id_user = eval(str(call.from_user))['id']
+        weeknum = 1
+        daynum = 4
+        schedule(id_user,daynum,weeknum)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=call.message.text,
+                              )
+    elif call.data == 'friday1':
+        id_user = eval(str(call.from_user))['id']
+        weeknum = 1
+        daynum = 5
+        schedule(id_user,daynum,weeknum)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=call.message.text,
+                              )
+    elif call.data == 'saturday1':
+        id_user = eval(str(call.from_user))['id']
+        weeknum = 1
+        daynum = 6
+        schedule(id_user,daynum,weeknum)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=call.message.text,
+                              )
+
 
 @bot.message_handler(content_types = ['text'])
 def process_get_main_student(message): #личный кабинет студента
@@ -200,6 +375,13 @@ def process_get_main_student(message): #личный кабинет студен
             saturday1 = types.InlineKeyboardButton(text='СБ', callback_data='saturday1')
             keyboard0.add(monday1, tuesday1, wednesday1, thrusday1, friday1, saturday1)
             bot.send_message(message.chat.id, 'На какой день нужно расписание?:', reply_markup=keyboard0)
+        elif message.text == 'Непрочитанные новости':
+            news(id_user)
+        elif message.text == 'Все новости':
+            news_all(id_user)
+        elif message.text == '1':
+            update_news_table()
+
 
 
 bot.polling(none_stop=True)
