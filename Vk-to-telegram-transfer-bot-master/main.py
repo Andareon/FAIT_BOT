@@ -10,7 +10,7 @@ import vk_api
 import telebot
 import threading
 import urllib.request as ur
-from PIL import Image  # Для преобразования изображений из webp в PNG
+#from PIL import Image  # Для преобразования изображений из webp в PNG
 import sqlite3
 
 
